@@ -12,10 +12,10 @@ import type { Color } from '../../../../../shared/util/math/math.js';
 // =========================================== Quads ==================================================
 
 /** [TRIANGLES] Generates vertex data for a 2D quad with NO COLOR DATA. */
+// prettier-ignore
 function Quad(left: number, bottom: number, right: number, top: number): number[] {
-	// prettier-ignore
 	return [
-		//     Position
+		// Position
         left,  bottom,
         left,  top,
         right, bottom,
@@ -29,7 +29,7 @@ function Quad(left: number, bottom: number, right: number, top: number): number[
 // prettier-ignore
 function Quad_Color(left: number, bottom: number, right: number, top: number, [r,g,b,a]: Color): number[] {
 	return [
-		//      Position           Color
+		// Position           Color
         left,  bottom,      r, g, b, a,
         left,  top,         r, g, b, a,
         right, bottom,      r, g, b, a,
@@ -44,7 +44,7 @@ function Quad_Color(left: number, bottom: number, right: number, top: number, [r
 // prettier-ignore
 function Quad_Color3D(left: number, bottom: number, right: number, top: number, z: number, [r,g,b,a]: Color): number[] {
 	return [
-		//      Position              Color
+		//  Position             Color
         left,  bottom, z,      r, g, b, a,
         left,  top,    z,      r, g, b, a,
         right, bottom, z,      r, g, b, a,
@@ -59,7 +59,7 @@ function Quad_Color3D(left: number, bottom: number, right: number, top: number, 
 // prettier-ignore
 function Quad_Texture(left: number, bottom: number, right: number, top: number, texleft: number, texbottom: number, texright: number, textop: number): number[] {
 	return [
-		//     Position          Texture Coord
+		// Position          Texture Coord
         left,  bottom,    texleft,  texbottom,
         left,  top,       texleft,  textop,
         right, bottom,    texright, texbottom,
@@ -74,7 +74,7 @@ function Quad_Texture(left: number, bottom: number, right: number, top: number, 
 // prettier-ignore
 function Quad_ColorTexture(left: number, bottom: number, right: number, top: number, texleft: number, texbottom: number, texright: number, textop: number, r: number, g: number, b: number, a: number): number[] {
 	return [
-		//     Position          Texture Coord           Color
+		// Position          Texture Coord          Color
         left,  bottom,    texleft,  texbottom,    r, g, b, a,
         left,  top,       texleft,  textop,       r, g, b, a,
         right, bottom,    texright, texbottom,    r, g, b, a,
@@ -89,7 +89,7 @@ function Quad_ColorTexture(left: number, bottom: number, right: number, top: num
 // prettier-ignore
 function Quad_ColorTexture3D(left: number, bottom: number, right: number, top: number, z: number, texleft: number, texbottom: number, texright: number, textop: number, r: number, g: number, b: number, a: number): number[] {
 	return [
-		//       Position            Texture Coord           Color
+		// Position              Texture Coord          Color
         left,  bottom, z,     texleft,  texbottom,    r, g, b, a,
         left,  top,    z,     texleft,  textop,       r, g, b, a,
         right, bottom, z,     texright, texbottom,    r, g, b, a,
@@ -104,7 +104,7 @@ function Quad_ColorTexture3D(left: number, bottom: number, right: number, top: n
 // prettier-ignore
 function Rect(left: number, bottom: number, right: number, top: number, [r,g,b,a]: Color): number[] {
 	return [
-		//    x     y            color
+		// x     y          color
         left,  bottom,    r, g, b, a,
         left,  top,       r, g, b, a,
         right, top,       r, g, b, a,
@@ -297,6 +297,87 @@ function Ring(x: number, y: number, inRad: number, outRad: number, resolution: n
 	return data;
 }
 
+/**
+ * [TRIANGLES] Generates vertex data for a radial gradient centered at (x, y).
+ * Colors repeat outward with the given spacing (same units as x/y) and phase offset.
+ */
+// prettier-ignore
+function RadialGradient(x: number, y: number, radius: number, colors: Color[], spacing: number, phase: number, resolution: number): number[] {
+	if (colors.length === 0 || spacing <= 0 || radius <= 0) return [];
+
+	const n = colors.length;
+
+	function colorAtRadius(r: number): Color {
+		const t = (r + phase) / spacing;
+		const lower = Math.floor(t);
+		const frac = t - lower;
+		const c1 = colors[((lower % n) + n) % n]!;
+		const c2 = colors[(((lower + 1) % n) + n) % n]!;
+		return [
+			c1[0] + (c2[0] - c1[0]) * frac,
+			c1[1] + (c2[1] - c1[1]) * frac,
+			c1[2] + (c2[2] - c1[2]) * frac,
+			c1[3] + (c2[3] - c1[3]) * frac,
+		];
+	}
+
+	// Build ring boundaries: radii where (r + phase) is an exact multiple of spacing.
+	const phasemod = ((phase % spacing) + spacing) % spacing;
+	const firstBoundary = phasemod === 0 ? 0 : spacing - phasemod;
+
+	const boundaries: number[] = [0];
+	let r = firstBoundary > 0 ? firstBoundary : spacing;
+	while (r < radius) {
+		boundaries.push(r);
+		r += spacing;
+	}
+	boundaries.push(radius);
+
+	const data: number[] = [];
+
+	for (let i = 0; i < boundaries.length - 1; i++) {
+		const innerR = boundaries[i]!;
+		const outerR = boundaries[i + 1]!;
+		const [r1, g1, b1, a1] = colorAtRadius(innerR);
+		const [r2, g2, b2, a2] = colorAtRadius(outerR);
+
+		for (let j = 0; j < resolution; j++) {
+			const theta     = (j     / resolution) * 2 * Math.PI;
+			const nextTheta = ((j + 1) / resolution) * 2 * Math.PI;
+
+			const outerX     = x + outerR * Math.cos(theta);
+			const outerY     = y + outerR * Math.sin(theta);
+			const outerXNext = x + outerR * Math.cos(nextTheta);
+			const outerYNext = y + outerR * Math.sin(nextTheta);
+
+			if (innerR === 0) {
+				data.push(
+					x,          y,              r1, g1, b1, a1,
+					outerX,     outerY,         r2, g2, b2, a2,
+					outerXNext, outerYNext,     r2, g2, b2, a2,
+				);
+			} else {
+				const innerX     = x + innerR * Math.cos(theta);
+				const innerY     = y + innerR * Math.sin(theta);
+				const innerXNext = x + innerR * Math.cos(nextTheta);
+				const innerYNext = y + innerR * Math.sin(nextTheta);
+
+				data.push(
+					innerX,     innerY,         r1, g1, b1, a1,
+					outerX,     outerY,         r2, g2, b2, a2,
+					innerXNext, innerYNext,     r1, g1, b1, a1,
+
+					outerX,     outerY,         r2, g2, b2, a2,
+					outerXNext, outerYNext,     r2, g2, b2, a2,
+					innerXNext, innerYNext,     r1, g1, b1, a1,
+				);
+			}
+		}
+	}
+
+	return data;
+}
+
 // =========================================== Other Shapes ================================================
 
 /** [TRIANGLES] Generates vertex data for a four-sided, hollow rectangular prism. */
@@ -350,6 +431,7 @@ export default {
 	Circle,
 	GlowDot,
 	Ring,
+	RadialGradient,
 	// Other Shapes
 	BoxTunnel,
 };

@@ -9,6 +9,7 @@ import bimath from '../../../../../shared/util/math/bimath.js';
 import moveutil from '../../../../../shared/chess/util/moveutil.js';
 import bdcoords from '../../../../../shared/chess/util/bdcoords.js';
 import boardutil from '../../../../../shared/chess/util/boardutil.js';
+import gameconfig from '../../../../../shared/util/gameconfig.js';
 
 import toast from './toast.js';
 import stats from './stats.js';
@@ -58,20 +59,6 @@ const element_moveForward = document.getElementById('move-right')!;
 const element_undoEdit = document.getElementById('undo-edit')!;
 const element_redoEdit = document.getElementById('redo-edit')!;
 const element_pause = document.getElementById('pause')!;
-
-/**
- * A limit posed against teleporting too far.
- *
- * Don't want players to discover new zones quickly
- * without doing the work of zooming out :)
- * That would decrease the reward.
- *
- * FUTURE: I could allow teleporting up to 1e10000.
- * I roughly determined 1e75000 to be the bound for
- * no noticeable lag in websocket message size.
- * That would still prevent instantly exceeding that.
- */
-const TELEPORT_LIMIT: bigint = 10n ** 30n; // 10^30 squares
 
 const timeToHoldMillis = 250; // After holding the button this long, moves will fast-rewind or edits will fast undo/redo
 const intervalToRepeat = 40; // Default 40. How quickly moves will fast-rewind or edits will fast undo/redo
@@ -187,36 +174,6 @@ function updateElement_Coords(): void {
 }
 
 /**
- * Formats a BigInt into a string with exponential notation.
- * e.g., formatBigIntExponential(123456789n, 3) => "1.23e8"
- * @param bigint The BigInt to format.
- * @param precision The number of significant digits for the mantissa.
- * @returns The formatted string.
- */
-function formatBigIntExponential(bigint: bigint, precision: number): string {
-	// Work with the absolute value and track the sign
-	const isNegative = bigint < 0n;
-	const absString: string = bimath.abs(bigint).toString();
-
-	const exponent: number = absString.length - 1;
-
-	// Get the digits for the mantissa (the part before 'e')
-	const mantissaDigits: string = absString.substring(0, precision);
-
-	let mantissa: string;
-	if (mantissaDigits.length > 1) {
-		// Insert the decimal point, e.g., "123" -> "1.23"
-		mantissa = mantissaDigits[0] + '.' + mantissaDigits.substring(1);
-	} else {
-		// If precision is 1, no decimal point is needed
-		mantissa = mantissaDigits;
-	}
-
-	// Re-attach the negative sign if needed and combine the parts
-	return `${isNegative ? '-' : ''}${mantissa}e${exponent}`;
-}
-
-/**
  * Displays a BigInt in an input element. If it overflows,
  * it's displayed in exponential notation instead.
  * @param inputElement The input element to display the number in.
@@ -235,7 +192,7 @@ function displayBigIntInInput(
 	if (inputElement.scrollWidth > inputElement.clientWidth + 1) {
 		// Needs the +1 due to floating point stuff. Else sometimes at random font sizes this is true when it shouldn't be.
 		// Format it and set the .value again.
-		inputElement.value = formatBigIntExponential(bigint, precision);
+		inputElement.value = bimath.formatBigIntExponential(bigint, precision);
 	}
 }
 
@@ -432,7 +389,7 @@ function callback_CoordsChange(index: 0 | 1): void {
 		return;
 	}
 
-	if (bimath.abs(proposed) > TELEPORT_LIMIT) {
+	if (bimath.abs(proposed) > gameconfig.TELEPORT_LIMIT) {
 		toast.show(translations['coords-exceeded'], { error: true });
 		return;
 	}

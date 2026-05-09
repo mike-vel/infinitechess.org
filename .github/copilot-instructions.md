@@ -4,7 +4,7 @@
 
 Each non-local session requires installing dependancies via `npm i --silent`. Check the working directory: if it contains Users, it's local; if it contains /home/runner/ or /github/, it's a GitHub Actions runner.
 
-BEFORE commiting any new changes, and before responding to review feedback, always ensure all workflow checks pass: `npm run lint --silent`, `npx npx tsc --noEmit`, and `npm test`. You must repeat each of these commands, even if you only made a minor code change since your last check to fix one of their errors.
+BEFORE commiting any new changes, and before responding to review feedback, always ensure all workflow checks pass: `npm run lint --silent`, `npx tsc --noEmit`, and `npm test`. You must repeat each of these commands, even if you only made a minor code change since your last check to fix one of their errors.
 
 ## Key Guidelines
 
@@ -33,6 +33,7 @@ BEFORE commiting any new changes, and before responding to review feedback, alwa
 - **Translations:** TOML files in `translation/` for i18n. News per locale in `translation/news/`. Any modification to the en-US.toml requires you update the version number at the top of the file, and reflect the change in `translation/changes.json`. Change notes in `changes.json` should be clear and concise, not containing more information than necessary, and always indicate the line numbers of the removed/added keys.
 - **UI Changes:** When asked to make UI changes, please verify the changes look good via the integrated browser.
 - **Rendering:** When asked to add new graphics and visuals to the game (canvas), refer to the Graphics Rendering Guide in `docs/GRAPHICS.md`.
+- When determining which imports can safely be removed, the command `npm run lint --silent` automatically tells you what imports are unused.
 
 ## Integration Points
 

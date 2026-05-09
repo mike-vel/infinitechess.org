@@ -185,8 +185,11 @@ function update(): void {
 		return;
 	}
 
-	hoverSquare = mouse.getTileMouseOver_Integer(); // Update the tile the mouse is hovering over, if any.
-	// console.log("Hover square:", hoverSquare);
+	// Update the hover square to:
+	// 1. The draganimation hover coords, if present. The droparrows and dragarrows features can change this.
+	// 2. Fallback to current mouse coords.
+	hoverSquare = draganimation.getHoveredCoords() ?? mouse.getTileMouseOver_Integer(); // Update the tile the mouse is hovering over, if any.
+	// console.log('Hover square:', hoverSquare);
 
 	updateHoverSquareLegal(gamefile); // Update whether the hover square is legal to move to.
 	if (!hoverSquare) return; // Looking into sky
@@ -262,10 +265,14 @@ function testIfPieceSelected(gamefile: FullGame, mesh: Mesh | undefined): void {
 	if (mouseKeybind === undefined) return; // Nothing assigned to selecting pieces currently
 
 	// If we did not click, exit...
-	const dragEnabled = preferences.getDragEnabled();
-	if (dragEnabled && !mouse.isMouseDown(mouseKeybind) && !mouse.isMouseClicked(mouseKeybind))
+	const effectiveDragEnabled = keybinds.getEffectiveDragEnabled();
+	if (
+		effectiveDragEnabled &&
+		!mouse.isMouseDown(mouseKeybind) &&
+		!mouse.isMouseClicked(mouseKeybind)
+	)
 		return; // If dragging is enabled, all we need is pointer down event.
-	else if (!dragEnabled && !mouse.isMouseClicked(mouseKeybind)) return; // When dragging is off, we actually need a pointer click.
+	else if (!effectiveDragEnabled && !mouse.isMouseClicked(mouseKeybind)) return; // When dragging is off, we actually need a pointer click.
 
 	if (boardpos.boardHasMomentum()) return; // Don't select a piece if the boardsim is moving
 
@@ -291,7 +298,6 @@ function testIfPieceSelected(gamefile: FullGame, mesh: Mesh | undefined): void {
 		selectPiece(gamefile, mesh, pieceClicked!, false); // Select, but don't start dragging
 	} else if (selectionLevel === 2 && mouse.isMouseDown(mouseKeybind)) {
 		// Can DRAG this piece type
-		if (listener_document.isKeyHeld('ControlLeft')) return; // Control key force drags the board, disallowing picking up a piece.
 		/** Just quickly make sure that, if we already have selected a piece,
 		 * AND we just clicked a piece that's legal to MOVE to,
 		 * that we don't select it instead! */
@@ -312,10 +318,6 @@ function testIfPieceDropped(gamefile: FullGame, mesh: Mesh | undefined): void {
 	if (!draganimation.hasPointerReleased()) return; // The pointer has not released yet, don't drop it.
 
 	// The pointer has released, drop the piece.
-
-	// If it was dropped on an arrow indicator pointing to a legal piece to capture, capture that!
-	const dropArrowsCaptureCoords = droparrows.getCaptureCoords();
-	if (dropArrowsCaptureCoords) return moveGamefilePiece(gamefile, mesh, dropArrowsCaptureCoords);
 
 	// If it was dropped on its own square, AND the parity is negative, then also deselect the piece.
 
@@ -366,16 +368,17 @@ function viewFrontIfNotViewingLatestMove(gamefile: FullGame, mesh: Mesh | undefi
  */
 function canSelectPieceType(basegame: Game, type: number | undefined): 0 | 1 | 2 {
 	if (type === undefined) return 0; // Can't select nothing
-	if (boardeditor.areInBoardEditor()) return preferences.getDragEnabled() ? 2 : 1; // In board editor, we can select and drag ANY piece type, even voids!
+	const dragEnabled = keybinds.getEffectiveDragEnabled();
+	if (boardeditor.areInBoardEditor()) return dragEnabled ? 2 : 1; // In board editor, we can select and drag ANY piece type, even voids!
 	const [raw, player] = typeutil.splitType(type);
 	if (raw === r.VOID) return 0; // Can't select voids
-	if (editMode && gameloader.areInLocalGame()) return preferences.getDragEnabled() ? 2 : 1; // Edit mode allows any piece besides voids to be selected and dragged in local games.
+	if (editMode && gameloader.areInLocalGame()) return dragEnabled ? 2 : 1; // Edit mode allows any piece besides voids to be selected and dragged in local games.
 	if (player === p.NEUTRAL) return 0; // Can't select neutrals, period.
 	if (isOpponentType(basegame, type)) return 1; // Can select opponent pieces, but not draggable..
 	// It is our piece type...
-	const isOurTurn = gameloader.isItOurTurn(player);
+	const isOurTurn = gameloader.isItOurTurn();
 	if (!isOurTurn && !preferences.getPremoveEnabled()) return 1; // Can select our piece when it's not our turn, but not draggable.
-	return preferences.getDragEnabled() ? 2 : 1; // Can select and move this piece type (draggable too IF THAT IS ENABLED).
+	return dragEnabled ? 2 : 1; // Can select and move this piece type (draggable too IF THAT IS ENABLED).
 }
 
 /**
@@ -386,7 +389,7 @@ function canMovePieceType(pieceType: number): boolean {
 	const isOpponentPiece = isOpponentType(gameslot.getGamefile()!.basegame, pieceType);
 	if (isOpponentPiece) return false; // Don't move opponent pieces
 	// It is our piece type...
-	const isOurTurn = gameloader.areInLocalGame() || gameloader.isItOurTurn();
+	const isOurTurn = gameloader.isItOurTurn();
 	if (isOurTurn) return true; // Can always move pieces on our turn
 	return preferences.getPremoveEnabled(); // If it's not out turn, can only move if premoving is enabled.
 }
@@ -510,7 +513,7 @@ function initSelectedPieceInfo(gamefile: FullGame, mesh: Mesh | undefined, piece
 	pieceSelected = piece;
 
 	isOpponentPiece = isOpponentType(gamefile.basegame, piece.type);
-	isPremove = !isOpponentPiece && !gameloader.areInLocalGame() && !gameloader.isItOurTurn();
+	isPremove = !isOpponentPiece && !gameloader.isItOurTurn();
 
 	// Calculate the legal moves it has...
 
@@ -640,4 +643,6 @@ export default {
 	isOpponentPieceSelected,
 	arePremoving,
 	stealPointer,
+	selectPiece,
+	canSelectPieceType,
 };

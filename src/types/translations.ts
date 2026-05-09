@@ -28,16 +28,18 @@ export type TranslationKeys =
 	| 'header.settings.language'
 	| 'header.settings.appearance'
 	| 'header.settings.appearance-theme'
+	| 'header.settings.appearance-coordinates'
 	| 'header.settings.appearance-starfield'
 	| 'header.settings.appearance-advanced-effects'
 	| 'header.settings.legalmoves'
 	| 'header.settings.legalmoves-squares'
 	| 'header.settings.legalmoves-dots'
-	| 'header.settings.selection'
-	| 'header.settings.selection-drag'
-	| 'header.settings.selection-premove'
-	| 'header.settings.selection-animations'
-	| 'header.settings.selection-lingering_annotations'
+	| 'header.settings.gameplay'
+	| 'header.settings.gameplay-drag'
+	| 'header.settings.gameplay-premove'
+	| 'header.settings.gameplay-animations'
+	| 'header.settings.gameplay-fast_transitions'
+	| 'header.settings.gameplay-lingering_annotations'
 	| 'header.settings.perspective'
 	| 'header.settings.perspective-mouse-sensitivity'
 	| 'header.settings.perspective-fov'
@@ -617,16 +619,18 @@ export interface TranslationsObject {
 			language: string;
 			appearance: string;
 			'appearance-theme': string;
+			'appearance-coordinates': string;
 			'appearance-starfield': string;
 			'appearance-advanced-effects': string;
 			legalmoves: string;
 			'legalmoves-squares': string;
 			'legalmoves-dots': string;
-			selection: string;
-			'selection-drag': string;
-			'selection-premove': string;
-			'selection-animations': string;
-			'selection-lingering_annotations': string;
+			gameplay: string;
+			'gameplay-drag': string;
+			'gameplay-premove': string;
+			'gameplay-animations': string;
+			'gameplay-fast_transitions': string;
+			'gameplay-lingering_annotations': string;
 			perspective: string;
 			'perspective-mouse-sensitivity': string;
 			'perspective-fov': string;

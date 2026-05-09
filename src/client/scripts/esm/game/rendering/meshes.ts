@@ -29,7 +29,6 @@ import coordutil, {
 import boardpos from './boardpos.js';
 import boardtiles from './boardtiles.js';
 import primitives from './primitives.js';
-import spritesheet from './spritesheet.js';
 import perspective from './perspective.js';
 
 // Constants -------------------------------------------------------------------------
@@ -146,14 +145,32 @@ function QuadWorld_Color(coords: Coords, color: Color): number[] {
 /**
  * [World Space] Generates the vertex data of a colored texture.
  */
-function QuadWorld_ColorTexture(coords: Coords, type: number, color: Color): number[] {
-	const rotation = perspective.getIsViewingBlackPerspective() ? -1 : 1;
-	const { texleft, texbottom, texright, textop } = spritesheet.getTexDataOfType(type, rotation);
+function QuadWorld_ColorTexture(coords: Coords, color: Color): number[] {
+	const { texleft, texbottom, texright, textop } = getPieceTexCoords();
 	const { left, right, bottom, top } = getCoordBoxWorld(coords);
 	const [r, g, b, a] = color;
 
 	// prettier-ignore
 	return primitives.Quad_ColorTexture(left, bottom, right, top, texleft, texbottom, texright, textop, r, g, b, a);
+}
+
+/**
+ * Returns the texture coordinates for a full-texture piece quad (UV range 0–1),
+ * flipped when viewing from black's perspective.
+ */
+function getPieceTexCoords(): {
+	texleft: number;
+	texbottom: number;
+	texright: number;
+	textop: number;
+} {
+	const isBlack = perspective.getIsViewingBlackPerspective();
+	return {
+		texleft: isBlack ? 1 : 0,
+		texbottom: isBlack ? 1 : 0,
+		texright: isBlack ? 0 : 1,
+		textop: isBlack ? 0 : 1,
+	};
 }
 
 /**
@@ -197,6 +214,15 @@ function RectWorld(boundingBox: BoundingBox, color: Color): number[] {
 
 // Other Generic Rendering Methods -------------------------------------------------------
 
+/** Returns the position and uniform scale needed to render a board-space model. */
+function getBoardRenderTransform(offset: Coords, z: number = 0): { position: Vec3; scale: Vec3 } {
+	const boardPos = boardpos.getBoardPos();
+	const position = getModelPosition(boardPos, offset, z);
+	const boardScale = boardpos.getBoardScaleAsNumber();
+	const scale: Vec3 = [boardScale, boardScale, 1];
+	return { position, scale };
+}
+
 /**
  * Returns a model's transformed position that should be used when rendering its buffer model.
  *
@@ -232,8 +258,9 @@ export default {
 	QuadModel_Color,
 	QuadWorld_Color,
 	QuadWorld_ColorTexture,
+	getPieceTexCoords,
 	RectWorld,
 	// RectWorld_Filled,
 	// Other Generic Rendering Methods
-	getModelPosition,
+	getBoardRenderTransform,
 };

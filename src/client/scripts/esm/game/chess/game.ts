@@ -36,22 +36,27 @@ import starfield from '../rendering/starfield.js';
 import gameloader from './gameloader.js';
 import highlights from '../rendering/highlights/highlights.js';
 import droparrows from '../rendering/dragging/droparrows.js';
+import dragarrows from '../rendering/dragging/dragarrows.js';
 import onlinegame from '../misc/onlinegame/onlinegame.js';
 import boardtiles from '../rendering/boardtiles.js';
 import Transition from '../rendering/transitions/Transition.js';
 import primitives from '../rendering/primitives.js';
+import maskedDraw from '../../webgl/maskedDraw.js';
+import arrowshifts from '../rendering/arrows/arrowshifts.js';
 import annotations from '../rendering/highlights/annotations/annotations.js';
 import boardeditor from '../boardeditor/boardeditor.js';
 import perspective from '../rendering/perspective.js';
 import piecemodels from '../rendering/piecemodels.js';
 import screenshake from '../rendering/screenshake.js';
 import { GameBus } from '../GameBus.js';
+import coordinates from '../rendering/coordinates.js';
 import frametracker from '../rendering/frametracker.js';
 import WaterRipples from '../rendering/WaterRipples.js';
 import guinavigation from '../gui/guinavigation.js';
 import draganimation from '../rendering/dragging/draganimation.js';
 import webgl, { gl } from '../rendering/webgl.js';
 import promotionlines from '../rendering/promotionlines.js';
+import arrowsgraphics from '../rendering/arrows/arrowsgraphics.js';
 import { ProgramManager } from '../../webgl/ProgramManager.js';
 import { EffectZoneManager } from '../rendering/effect_zone/EffectZoneManager.js';
 import arrowlegalmovehighlights from '../rendering/arrows/arrowlegalmovehighlights.js';
@@ -89,6 +94,7 @@ let effectZoneManager: EffectZoneManager | undefined;
 function init(): void {
 	programManager = new ProgramManager(gl);
 	buffermodel.init(gl, programManager);
+	maskedDraw.init(programManager);
 
 	pipeline = new PostProcessingPipeline(gl, programManager);
 	effectZoneManager = new EffectZoneManager(gl, programManager);
@@ -179,7 +185,9 @@ function update(): void {
 	animation.update();
 	draganimation.updateDragLocation(); // BEFORE droparrows.shiftArrows() so that can overwrite this.
 	droparrows.shiftArrows(); // Shift the arrows of the dragged piece AFTER selection.update() makes any moves made!
-	arrows.executeArrowShifts(); // Execute any arrow modifications made by animation.js or arrowsdrop.js. Before arrowlegalmovehighlights.update(), dragBoard()
+	dragarrows.update(); // AFTER droparrows.shiftArrows(), BEFORE executeArrowShifts().
+	arrowshifts.executeArrowShifts(); // Execute any arrow modifications made by animation.js or arrowsdrop.js. Before arrowlegalmovehighlights.update(), dragBoard()
+	droparrows.updateLegalCaptureArrows(); // AFTER executeArrowShifts(), so rebuilt arrow lines don't reset pulsating opacities.
 
 	arrowlegalmovehighlights.update(); // After executeArrowShifts()
 
@@ -263,7 +271,7 @@ function renderScene(): void {
 	}
 
 	// Star Field Animation: Appears in border & voids
-	webgl.executeMaskedDraw(
+	maskedDraw.execute(
 		() => piecemodels.renderVoids(mesh), // INCLUSION MASK is our voids
 		() => border.drawPlayableRegionMask(gamefile.basegame.gameRules.worldBorder), // EXCLUSION MASK is our playable region
 		() => starfield.render(), // MAIN SCENE
@@ -272,7 +280,7 @@ function renderScene(): void {
 	);
 	// Board Tiles & Voids: Mask the playable region so the tiles
 	// don't render outside the world border or where voids should be
-	webgl.executeMaskedDraw(
+	maskedDraw.execute(
 		() => border.drawPlayableRegionMask(gamefile.basegame.gameRules.worldBorder), // INCLUSION MASK containing playable region
 		() => piecemodels.renderVoids(mesh), // EXCLUSION MASK (voids)
 		() => renderTilesAndPromoteLines(), // MAIN SCENE
@@ -293,6 +301,7 @@ function renderScene(): void {
 
 	// Using depth function "ALWAYS" means we don't have to render with a tiny z offset
 	webgl.executeWithDepthFunc_ALWAYS(() => {
+		coordinates.render();
 		selectedpiecehighlightline.render();
 		highlights.render(gamefile.boardsim);
 		GameBus.dispatch('render-below-pieces');
@@ -310,7 +319,8 @@ function renderScene(): void {
 		animation.renderAnimations();
 		selection.renderGhostPiece(); // If not after pieces.renderPiecesInGame(), wont render on top of existing pieces
 		draganimation.renderPiece();
-		arrows.render();
+		dragarrows.render();
+		arrowsgraphics.render();
 		boardeditor.render();
 		annotations.render_abovePieces();
 		GameBus.dispatch('render-above-pieces');

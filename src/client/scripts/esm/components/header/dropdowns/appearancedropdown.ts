@@ -1,4 +1,4 @@
-// src/client/scripts/esm/components/header/dropdowns/boarddropdown.ts
+// src/client/scripts/esm/components/header/dropdowns/appearancedropdown.ts
 
 import themes from '../../../../../../shared/components/header/themes.js';
 
@@ -8,10 +8,13 @@ import checkerboardgenerator from '../../../chess/rendering/checkerboardgenerato
 
 // Document Elements -------------------------------------------------------------------------
 
-const boardDropdownTitle = document.querySelector('.board-dropdown .dropdown-title')!;
-const boardDropdown = document.querySelector('.board-dropdown')!;
+const appearanceDropdownTitle = document.querySelector('.appearance-dropdown .dropdown-title')!;
+const appearanceDropdown = document.querySelector('.appearance-dropdown')!;
 const themeList = document.querySelector('.theme-list')!; // Get the theme list div
 
+const coordinatesCheckbox = document.querySelector<HTMLInputElement>(
+	'.boolean-option.coordinates input',
+)!;
 const starfieldCheckbox = document.querySelector<HTMLInputElement>(
 	'.boolean-option.starfield input',
 )!;
@@ -27,6 +30,7 @@ const advancedEffectsCheckbox = document.querySelector<HTMLInputElement>(
 })();
 
 function showCheckmarkOnSelectedOptions(): void {
+	coordinatesCheckbox.checked = preferences.getCoordinatesEnabled();
 	starfieldCheckbox.checked = preferences.getStarfieldMode();
 	advancedEffectsCheckbox.checked = preferences.getAdvancedEffectsMode();
 }
@@ -57,25 +61,29 @@ async function addThemesToThemesDropdown(): Promise<void> {
 }
 
 function open(): void {
-	boardDropdown.classList.remove('visibility-hidden'); // The stylesheet adds a short delay animation to when it becomes hidden
+	appearanceDropdown.classList.remove('visibility-hidden'); // The stylesheet adds a short delay animation to when it becomes hidden
 	initListeners();
 }
 function close(): void {
-	boardDropdown.classList.add('visibility-hidden'); // The stylesheet adds a short delay animation to when it becomes hidden
+	appearanceDropdown.classList.add('visibility-hidden'); // The stylesheet adds a short delay animation to when it becomes hidden
 	closeListeners();
 }
 
 function initListeners(): void {
-	boardDropdownTitle.addEventListener('click', close);
+	appearanceDropdownTitle.addEventListener('click', close);
 	initThemeChangeListeners();
+	// Coordinates toggle
+	coordinatesCheckbox.addEventListener('click', toggleCoordinates);
 	// Starfield toggle
 	starfieldCheckbox.addEventListener('click', toggleStarfield);
 	// Advanced Effects toggle
 	advancedEffectsCheckbox.addEventListener('click', toggleAdvancedEffects);
 }
 function closeListeners(): void {
-	boardDropdownTitle.removeEventListener('click', close);
+	appearanceDropdownTitle.removeEventListener('click', close);
 	closeThemeChangeListeners();
+	// Coordinates toggle
+	coordinatesCheckbox.removeEventListener('click', toggleCoordinates);
 	// Starfield toggle
 	starfieldCheckbox.removeEventListener('click', toggleStarfield);
 	// Advanced Effects toggle
@@ -113,6 +121,10 @@ function updateThemeSelectedStyling(): void {
 		if (theme.getAttribute('theme') === selectedTheme) theme.classList.add('selected');
 		else theme.classList.remove('selected');
 	}
+}
+
+function toggleCoordinates(): void {
+	preferences.setCoordinatesEnabled(coordinatesCheckbox.checked);
 }
 
 function toggleStarfield(): void {
